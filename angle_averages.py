@@ -26,7 +26,7 @@ class Angle_Average(object):
     def double_gaussian_fit(self, params):
         x = self.bin_centers
         fit = self.double_gaussian(x, params)
-        return (fit - self.bin_means)
+        return (fit - self.angle_and_intensity_average_interp)
 
     def get_data(file_name):
         data = np.genfromtxt(file_name, dtype=float, delimiter=None,
@@ -101,36 +101,38 @@ class Angle_Average(object):
         # normalize to 1
         angle_and_intensity_average = (angle_and_intensity_average - angle_and_intensity_average.min()) / (angle_and_intensity_average.max() - angle_and_intensity_average.min())
 
-        self.x = np.arange(450)
+        x = np.arange(450)
 
         ax2 = fig.add_subplot(122)
-        ax2.plot(self.x,angle_and_intensity_average,'b.')
+        ax2.plot(x,angle_and_intensity_average,'b.')
 
         n_bins = 50
-        self.bin_means, bin_edges, binnumber = stats.binned_statistic(self.x,
+        self.bin_means, bin_edges, binnumber = stats.binned_statistic(x,
                                                                     angle_and_intensity_average,
                                                                     statistic='mean',
                                                                     bins=n_bins)
         bin_width = (bin_edges[1] - bin_edges[0])
         self.bin_centers = bin_edges[1:] - bin_width/2
-        ax2.plot(self.bin_centers,self.bin_means,'r')
+        # ax2.plot(self.bin_centers,self.bin_means,'r')
 
         # interpolate 0s
 
         rbf = interpolate.Rbf(self.bin_centers, self.bin_means)
         self.angle_and_intensity_average_interp = rbf(self.bin_centers)
-        # ax2.plot(x,angle_and_intensity_average_interp,'r-')
+        ax2.plot(self.bin_centers,self.angle_and_intensity_average_interp, "black")
 
-        p = [1,0,8, 1, 180, 10, 1, 360, 10] # c1, mu1, sigma1, c2, mu2, sigma2
+        p = [1, 0, 5, 1, 180, 10, 1, 360, 10] # c1, mu1, sigma1, c2, mu2, sigma2
         lsq = leastsq(self.double_gaussian_fit, p)
         fit = self.double_gaussian(self.bin_centers, params= lsq[0])
         results = lsq[0].reshape(-1,3)
         FWHM = 2*np.sqrt(2*np.log(2))*results[1][2]
-        print(FWHM)
-        for res in results[1]:
-            print ("amplitude, position, sigma", res)
+        print("******** {}".format(lsq[1]))
+        print("FWHM: " + str(FWHM))
 
-        ax2.plot(self.bin_centers, fit, c = 'black')
+        for res in results:
+            print ("amplitude, position, sigma: ", res)
+
+        ax2.plot(self.bin_centers, fit, c = 'r')
         plt.show()
 
 def main():
