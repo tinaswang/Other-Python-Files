@@ -17,8 +17,8 @@ def segmentation(file_name):
     Z = data_z.reshape(shape_x, shape_y)
 
     markers = np.zeros_like(Z)
-    markers[Z < 0.1] = 1
-    markers[Z > 0.25] = 2
+    markers[Z < 0.15] = 1
+    markers[Z > 0.3] = 2
     elevation_map = roberts(Z)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 3), sharex=True, sharey=True)
     # ax.imshow(Z)
@@ -35,7 +35,7 @@ def segmentation(file_name):
     ax1.set_adjustable('box-forced')
 
     plt.show()
-    
+
 def get_data(file_name):
     data = np.genfromtxt(file_name, dtype=float, delimiter=None,
                          skip_header=2, names=["Qx", "Qy", "I(Qx,Qy)", "err(I)"])
