@@ -24,7 +24,7 @@ class Angle_Average(object):
         return res
 
     def double_gaussian_fit(self, params):
-        x = self.bin_centers
+        x = np.arange(450)
         fit = self.double_gaussian(x, params)
         return (fit - self.angle_and_intensity_average_interp)
 
@@ -116,14 +116,14 @@ class Angle_Average(object):
         # ax2.plot(self.bin_centers,self.bin_means,'r')
 
         # interpolate 0s
-
+        x_new = np.arange(450)
         rbf = interpolate.Rbf(self.bin_centers, self.bin_means)
-        self.angle_and_intensity_average_interp = rbf(self.bin_centers)
-        ax2.plot(self.bin_centers,self.angle_and_intensity_average_interp, "black")
+        self.angle_and_intensity_average_interp = rbf(x_new)
+        ax2.plot(x_new,self.angle_and_intensity_average_interp, "black", ls ='--',label="RBF Interpolation")
 
         p = [1, 0, 5, 1, 180, 10, 1, 360, 10] # c1, mu1, sigma1, c2, mu2, sigma2
         lsq = leastsq(self.double_gaussian_fit, p)
-        fit = self.double_gaussian(self.bin_centers, params= lsq[0])
+        fit = self.double_gaussian(x_new, params= lsq[0])
         results = lsq[0].reshape(-1,3)
         FWHM = 2*np.sqrt(2*np.log(2))*results[1][2]
         print("******** {}".format(lsq[1]))
@@ -132,7 +132,8 @@ class Angle_Average(object):
         for res in results:
             print ("amplitude, position, sigma: ", res)
 
-        ax2.plot(self.bin_centers, fit, c = 'r')
+        ax2.plot(x_new,fit, c = 'r', label = 'Gaussian fit')
+        ax2.legend()
         plt.show()
 
 def main():
