@@ -106,20 +106,19 @@ def do_the_job(file_name):
 
     fig = plt.figure(figsize=(20, 10))
     ax1 = fig.add_subplot(121)
-    ax1.pcolormesh(X, Y, Z)
+    # ax1.pcolormesh(X, Y, Z)
 
     # Sectors
     H, x, y = sector_average(data_x, data_y, data_z)
+    X, Y = np.meshgrid(x, y)
     detected_peaks = detect_peaks(H)
     peaks= np.ma.masked_array(H, np.logical_not(detected_peaks))
-
-    ax1.contour(detected_peaks, [0.5], linewidths=1.2, colors='black')
+    ax1.imshow(H)
+    ax1.contour(detected_peaks, color = 'black')
+    # ax1.contourf(X, Y, H.T, 150)
     ax2 = fig.add_subplot(122)
-    H_X, H_Y = np.meshgrid(x, y)
-    
 
-    ax2.plot(angle_and_intensity_average)
-
+    ax2.imshow(peaks)
 
     plt.show()
 def main():
