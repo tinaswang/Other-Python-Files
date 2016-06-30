@@ -9,11 +9,12 @@ from scipy import ndimage
 from scipy.optimize import leastsq
 from scipy import signal
 from scipy import interpolate
-from scipy import stats
+import scipy.optimize as opt
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit
-from scipy.ndimage.filters import maximum_filter
+from scipy.ndimage.filters import maximum_filter, minimum_filter
 from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
+
 
 def detect_peaks(image):
 
@@ -30,29 +31,7 @@ def detect_peaks(image):
     return detected_peaks
 
 def gaussian(x,a,x0,sigma):
-    return a*exp(-(x-x0)**2/(2*sigma**2))
-
-def radial_average(data_x, data_y, data_z):
-    '''
-    '''
-    angle = np.arctan2(data_y, data_x)
-    angle = np.rad2deg(angle)
-    # make it integer from 0 to 360
-    angle = np.round(angle).astype(int) + 180
-
-    # limit Q range
-    q = np.linalg.norm(np.column_stack((data_x, data_y)), axis=1)
-    q_condition = q<0.35
-
-    angle_and_intensity_sum = np.bincount(angle[q_condition],
-        weights=data_z[q_condition])
-    angle_and_intensity_counts = np.bincount(angle[q_condition])
-
-    angle_and_intensity_average = angle_and_intensity_sum / angle_and_intensity_counts.astype(np.float64)
-    angle_and_intensity_average = np.nan_to_num(angle_and_intensity_average) # because division by 0
-    angle_and_intensity_average = np.tile(angle_and_intensity_average, 2) # duplicates array
-
-    return angle_and_intensity_average[:450]
+    return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
 def get_data(file_name):
     '''
@@ -104,23 +83,60 @@ def do_the_job(file_name):
     Y = data_y.reshape(shape_x, shape_y)
     Z = data_z.reshape(shape_x, shape_y)
 
-    fig = plt.figure(figsize=(20, 10))
-    ax1 = fig.add_subplot(121)
-    # ax1.pcolormesh(X, Y, Z)
+    fig = plt.figure(figsize = (20, 15))
+    ax1 = fig.add_subplot(221)
+    ax1.pcolormesh(X, Y, Z)
 
     # Sectors
     H, x, y = sector_average(data_x, data_y, data_z)
-    X, Y = np.meshgrid(x, y)
+    X_1, Y_1 = np.meshgrid(x, y)
+
     detected_peaks = detect_peaks(H)
     peaks= np.ma.masked_array(H, np.logical_not(detected_peaks))
-    ax1.imshow(H)
-    ax1.contour(detected_peaks, color = 'black')
-    # ax1.contourf(X, Y, H.T, 150)
-    ax2 = fig.add_subplot(122)
 
-    ax2.imshow(peaks)
+    peaks = np.nan_to_num(peaks)
+    com = ndimage.center_of_mass(peaks)
 
+    ax2 = fig.add_subplot(222)
+    ax2.contourf(X_1, Y_1, H.T, 150)
+    ax4 = fig.add_subplot(224)
+    row = H[:,int(com[1])]
+    x_axis = np.linspace(0, len(H)/50 * 180, len(H))
+    y_ax2 = np.empty(360)
+    y_ax2.fill(com[1]/50)
+    x_ax2 = np.linspace(0, 360, 360)
+    ax2.plot(x_ax2, y_ax2)
+    ax4.plot(x_axis, row)
+    row = np.nan_to_num(row)
+
+    n_bins = 50
+    bin_means, bin_edges, binnumber = stats.binned_statistic(x_axis, row, statistic='mean', bins=n_bins)
+    bin_width = (bin_edges[1] - bin_edges[0])
+    bin_centers = bin_edges[1:] - bin_width/2
+    # normalize to 1
+    bin_means = (bin_means - bin_means.min()) / (bin_means.max() - bin_means.min())
+
+
+    xs = np.linspace(bin_centers.min(), bin_centers.max(), 1000)
+    rbf = interpolate.Rbf(bin_centers, bin_means)
+    spline = rbf(xs)
+
+    popt, pcov = curve_fit(gaussian,xs, spline, p0 = [0.7, 177, 10])
+
+    ax4.plot(x_axis,gaussian(x_axis,*popt),'ro:',label='fit')
+    FWHM = 2*np.sqrt(2*np.log(2))*np.absolute(popt[2])
+    sigma_2 = 2*popt[2]
+    print("FWHM: ", FWHM )
+    print("2*sigma: ", sigma_2)
+
+    ax3 = fig.add_subplot(223)
+    ax3.pcolormesh(X, Y, Z)
+    x_line = np.linspace(np.amin(X),np.amax(X), 100)
+    y_line = x_line* np.tan(np.deg2rad(sigma_2/2))
+    ax3.plot(x_line, y_line)
+    ax3.plot(x_line, -y_line)
     plt.show()
+
 def main():
     if len(sys.argv) != 2:
         print("Usage " + sys.argv[0] + " Iqxy.dat file")
