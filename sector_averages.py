@@ -11,35 +11,27 @@ from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit
 from scipy.ndimage import filters
 from scipy.ndimage.morphology import generate_binary_structure, binary_erosion
+import cv2
+from skimage import img_as_ubyte
 
+def get_max(image): # radius must be odd, and = sigma
+        copy = image.copy()
+        bool_mask = np.ones((image.shape[0], image.shape[1]), dtype = bool)
+        row_num = len(image)
+        min_num = int(row_num*0.1)
+        max_num = int(row_num * 0.9)
+        for i in range(len(image)):
+            for j in range(len(image[i])):
+                    if i < min_num or i >max_num:
+                        bool_mask[i][j] = False
 
-def get_max(data):
-    background = (data >= 2*np.mean(data))
-    roi = binary_erosion(background, border_value=1)
-    row_num = len(roi)
-    min_num = int(row_num*0.2)
-    max_num = int(row_num * 0.8)
+        bool_mask = img_as_ubyte(bool_mask)
+        center = cv2.bitwise_and(image,image,mask = bool_mask)
 
-    for i in range(len(roi)):
-        for j in range(len(roi[i])):
-                if i < min_num or i >max_num:
-                    roi[i][j] = False
-    max_length = 0
-    max_col = 0
-    for j in range (len(roi[0])):
-        for i in range(len(roi)):
-            if roi[i][j] == True:
-                last_true = 0
-                for length in range(i + 1 , len(roi)):
-                    if roi[length][j ]==True and length > last_true:
-                        last_true = length
-                if (last_true - i) > max_length:
-                    max_length  = last_true - i
-                    max_col = j
-                elif (last_true - i) == max_length:
-                    max_col = float((max_col + j)/2)
-
-    return max_col
+        orig = center.copy()
+        gray = cv2.GaussianBlur(orig, (1, 1), 0)
+        (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(gray)
+        return maxLoc
 
 def detect_peaks(image):
     background = (image >=2 * np.mean(np.nan_to_num(image)))
@@ -129,10 +121,10 @@ def do_the_job(file_name):
 
     ax2.contourf(X_1, Y_1, H.T, 150)
     ax4 = fig.add_subplot(224)
-    row = H[:,int(com)]
+    row = H[:,int(com[0])]
     x_axis = np.linspace(0, len(H)/50 * 180, len(H))
     y_ax2 = np.empty(360)
-    y_ax2.fill(com/H.shape[1])
+    y_ax2.fill(com[0]/H.shape[1])
     x_ax2 = np.linspace(0, 360, 360)
     ax2.plot(x_ax2, y_ax2)
 
@@ -152,7 +144,7 @@ def do_the_job(file_name):
     rbf = interpolate.Rbf(bin_centers, bin_means)
     spline = rbf(xs)
 
-    popt, pcov = curve_fit(gaussian,xs, spline, p0 = [1, 180, 10])
+    popt, pcov = curve_fit(gaussian,xs, spline, p0 = [1, float(com[1]/50) * 180, 10])
 
     ax4.plot(x_axis,gaussian(x_axis,*popt),'ro:',label='fit')
     FWHM = 2*np.sqrt(2*np.log(2))*np.absolute(popt[2])
