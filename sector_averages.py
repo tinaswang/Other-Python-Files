@@ -113,6 +113,8 @@ def data_fit(data, com, H):
     return fit, FWHM, sigma_2, center
 
 def do_the_job(file_name, n_bins_radius=50, max_radius=np.inf):
+    if max_radius != np.inf:
+        max_radius = float(max_radius)
     data_x, data_y, data_z = get_data(file_name)
     # Raw image
     shape_x = len(np.unique(data_x))
@@ -126,7 +128,7 @@ def do_the_job(file_name, n_bins_radius=50, max_radius=np.inf):
     ax1.pcolormesh(X, Y, Z)
 
     # Sectors
-    H, x, y= sector_average(data_x, data_y, data_z, n_bins_radius=int(n_bins_radius),max_radius=int(max_radius))
+    H, x, y= sector_average(data_x, data_y, data_z, n_bins_radius=int(n_bins_radius),max_radius=(max_radius))
     X_1, Y_1 = np.meshgrid(x, y)
 
     com = get_max(np.nan_to_num(H))
@@ -165,18 +167,9 @@ def do_the_job(file_name, n_bins_radius=50, max_radius=np.inf):
 def main():
     if len(sys.argv) > 4:
         print("Usage " + sys.argv[0] + " Iqxy.dat file")
-    elif not (int(sys.argv[2] or sys.argv[3])):
-        print("bins and max_radius must be ints.")
+    elif len(sys.argv) == 2:
+        do_the_job(sys.argv[1])
     else:
         do_the_job(sys.argv[1], sys.argv[2], sys.argv[3])
-
 if __name__ == "__main__":
     main()
-    # d = Data(data_file=file_name)
-    # d.setup()
-    # data_z = d.data
-    # size_x = d.pixel_size_x/1000.0
-    # size_y = d.pixel_size_y/1000.0
-    # data_x = size_x*np.repeat(np.linspace(-len(data_z)/2,len(data_z)/2,len(data_z))[:,np.newaxis], len(data_z[0]),1).flatten()
-    # data_y = size_y*np.repeat(np.linspace(-len(data_z[0])/2, len(data_z[0])/2, len(data_z[0]))[np.newaxis, :], len(data_z),0).flatten()
-    #     # data_z = data_z.flatten()
