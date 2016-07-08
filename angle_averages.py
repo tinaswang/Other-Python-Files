@@ -94,8 +94,8 @@ class Angle_Average(object):
 
         fig = plt.figure(figsize=(20, 10))
         ax1 = fig.add_subplot(121)
-        ax1.pcolormesh(X,Y,Z)
-
+        # ax1.pcolormesh(X,Y,Z)
+        ax1.imshow(Z)
         angle_and_intensity_average = Angle_Average.radial_average(data_x, data_y, data_z)
 
         # normalize to 1
@@ -113,13 +113,13 @@ class Angle_Average(object):
                                                                     bins=n_bins)
         bin_width = (bin_edges[1] - bin_edges[0])
         self.bin_centers = bin_edges[1:] - bin_width/2
-        # ax2.plot(self.bin_centers,self.bin_means,'r')
+        ax2.plot(self.bin_centers,self.bin_means,'green', label="Binned")
 
         # interpolate 0s
         x_new = np.arange(450)
         rbf = interpolate.Rbf(self.bin_centers, self.bin_means)
         self.angle_and_intensity_average_interp = rbf(x_new)
-        ax2.plot(x_new,self.angle_and_intensity_average_interp, "black", ls ='--',label="RBF Interpolation")
+        ax2.plot(x_new,self.angle_and_intensity_average_interp, "black", marker ='*', ls = "--",label="RBF Interpolation")
 
         p = [1, 0, 5, 1, 180, 10, 1, 360, 10] # c1, mu1, sigma1, c2, mu2, sigma2
         lsq = leastsq(self.double_gaussian_fit, p)
