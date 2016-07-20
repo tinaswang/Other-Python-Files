@@ -4,21 +4,30 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 import scipy.optimize as opt
+import time
 from skimage import img_as_ubyte
 from scipy import ndimage
 from scipy import signal
 from scipy import interpolate
+from numba import jit
 
+
+@jit(nopython=True)
 def gaussian(x,a,x0,sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
+
+@jit(nopython=True)
+def get_mask(image, bool_mask):
+    for i in range(len(image)):
+        for j in range(len(image[i])):
+                if j < 2:
+                    bool_mask[i][j] = False
+    return bool_mask
 
 def get_max(image):
         copy = image.copy()
         bool_mask = np.ones((image.shape[0], image.shape[1]), dtype = bool)
-        for i in range(len(image)):
-            for j in range(len(image[i])):
-                    if j < 2:
-                        bool_mask[i][j] = False
+        bool_mask = get_mask(image, bool_mask)
         bool_mask = img_as_ubyte(bool_mask)
         center = cv2.bitwise_and(image,image,mask = bool_mask)
 
@@ -37,6 +46,7 @@ def get_data(file_name):
     data_y = data['Qy']  # .reshape(shape_x, shape_y)
     data_z = data['IQxQy']  # .reshape(shape_x, shape_y)
     return data_x, data_y, data_z
+
 
 def sector_average(data_x, data_y, data_z, n_bins_angle=100, n_bins_radius=50, max_radius = np.inf):
     radius = np.linalg.norm(np.column_stack((data_x, data_y)), axis=1)
@@ -104,11 +114,12 @@ def data_fit(data, com, H):
     print("2nd peak: %f degrees" % (center_1))
     print("difference between peaks: %f degrees" % (center_1- center))
     print("average angle: %f degrees" %((sigma_2 + sigma_2_1)/2))
-    print("average rotation: %f degrees" %(rotation))
+    print("average rotation: %f degrees" % (rotation))
 
     return fit, sigma_2, fit_1, sigma_2_1, rotation
 
 def display_graphs(file_name, n_bins_radius=50, max_radius=np.inf):
+    start = time.time()
     if max_radius != np.inf:
         max_radius = float(max_radius)
     data_x, data_y, data_z = get_data(file_name)
@@ -122,6 +133,7 @@ def display_graphs(file_name, n_bins_radius=50, max_radius=np.inf):
     fig = plt.figure(figsize = (20, 15))
     ax1 = fig.add_subplot(221)
     ax1.pcolormesh(X, Y, Z)
+    # get_center_of_mass(X, Y, Z)
     # Sectors
     H, H_orig, x, y= sector_average(data_x, data_y, data_z,
                                     n_bins_radius=int(n_bins_radius),
@@ -157,8 +169,9 @@ def display_graphs(file_name, n_bins_radius=50, max_radius=np.inf):
     axes = plt.gca()
     axes.set_xlim([X.min(),X.max()])
     axes.set_ylim([Y.min(),Y.max()])
+    end = time.time()
+    print(end - start)
     plt.show()
-
 def main():
     if len(sys.argv) > 4:
         print("Too many parameters.")
@@ -167,6 +180,7 @@ def main():
     elif len(sys.argv)==3:
         display_graphs(sys.argv[1], sys.argv[2])
     else:
+        start = time.time()
         display_graphs(sys.argv[1], sys.argv[2], sys.argv[3])
 if __name__ == "__main__":
     main()
